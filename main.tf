@@ -1,13 +1,32 @@
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=3.0.0"
+    }
+  }
+  required_version = ">=1.1.0"
+}
+
+# Configure the Microsoft Azure Provider
+provider "azurerm" {
+  features {}
+  alias           = "dev"
+  client_id       = "c8a97064-c47b-4d26-8bce-a5ed245cf323"
+  client_secret   = "D9l8Q~XOJksgpAnL2IhSrOJio1WZ9SeBtueOBdg2"
+  tenant_id       = "cea297cb-9bde-428d-9a6e-48fa9c582ed6"
+  subscription_id = "2a79f2da-f098-4c8a-8e2a-f426682b1eac"
+}
 resource "azurerm_resource_group" "example" {
   provider = azurerm.dev
-  name     = var.rg_name
-  location = var.rg_location
+  name     = "example-resources"
+  location = "West Europe"
 }
 
 resource "azurerm_virtual_network" "example" {
   provider            = azurerm.dev
-  name                = var.vnet_name
-  address_space       = var.vnet_address_space
+  name                = "example-network"
+  address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.example.location
   resource_group_name = azurerm_resource_group.example.name
 }
@@ -17,7 +36,7 @@ resource "azurerm_subnet" "example" {
   name                 = "internal"
   resource_group_name  = azurerm_resource_group.example.name
   virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = var.subnet_address_prefix
+  address_prefixes     = ["10.0.1.0/24"]
 }
 resource "azurerm_public_ip" "example" {
   provider            = azurerm.dev
@@ -42,12 +61,13 @@ resource "azurerm_network_interface" "example" {
 
 resource "azurerm_linux_virtual_machine" "example" {
   provider                        = azurerm.dev
-  name                            = var.vm_name
+  name                            = "example-machine"
   resource_group_name             = azurerm_resource_group.example.name
   location                        = azurerm_resource_group.example.location
-  size                            = var.size
+  size                            = "Standard_DS2_v2"
   admin_username                  = "adminuser"
-  disable_password_authentication = true
+  admin_password                  = "Pa$$w0rd@1234!"
+  disable_password_authentication = false
   network_interface_ids = [
     azurerm_network_interface.example.id,
   ]
@@ -56,28 +76,11 @@ resource "azurerm_linux_virtual_machine" "example" {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }
-  admin_ssh_key {
-    username   = "adminuser"
-    public_key = file("~/.ssh/id_rsa.pub")
-  }
+
   source_image_reference {
     publisher = "Canonical"
     offer     = "UbuntuServer"
     sku       = "18.04-LTS"
     version   = "latest"
-  }
-}
-
-resource "null_resource" "example" {
-  connection {
-    type        = "ssh"
-    host        = azurerm_linux_virtual_machine.example.public_ip_address
-    user        = "adminuser"
-    private_key = file("~/.ssh/id_rsa")
-  }
-
-  provisioner "file" {
-    source      = "C:\\Users\\docdo/.ssh/id_rsa.pub" #file location should be updated 
-    destination = "/home/adminuser/.ssh/authorized_keys"
   }
 }
